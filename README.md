@@ -7,7 +7,7 @@ Successful verification example
 
 <img width="2011" height="1157" alt="image" src="https://github.com/user-attachments/assets/94bdc39c-4267-446d-bba4-7c2fbbfa3ef1" />
 
-# Requirements
+## Requirements
 
 Python 3.10 is recommended. Other Python versions may require different pip commands.
 

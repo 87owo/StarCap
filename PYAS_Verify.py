@@ -89,7 +89,7 @@ def verify_captcha():
     dist = math.sqrt((final_x - target['x'])**2 + (final_y - target['y'])**2)
 
     if len(trajectory) < 20:
-        return jsonify({'status': 'fail', 'msg': 'Too fast or insufficient data'})
+        return jsonify({'status': 'fail', 'msg': 'Unnatural movement'})
     elif dist > 10 and dist <= 20:
         return jsonify({'status': 'fail', 'msg': 'Not accurate enough'})
     elif dist > 20:
@@ -107,11 +107,11 @@ def verify_captcha():
             speeds.append(speed)
             
     if not speeds:
-        return jsonify({'status': 'fail', 'msg': 'No movement data'})
+        return jsonify({'status': 'fail', 'msg': 'Movement abnormal'})
         
     avg_speed = sum(speeds) / len(speeds)
-    if avg_speed > 20:
-        return jsonify({'status': 'fail', 'msg': 'Unnatural movement trajectory'})
+    if avg_speed > 1:
+        return jsonify({'status': 'fail', 'msg': 'Movement too fast'})
         
     session.pop('captcha_target', None)
     return jsonify({'status': 'success', 'msg': f'Verification successful! Character: {target["char"]}'})

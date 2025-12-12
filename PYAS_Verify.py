@@ -79,40 +79,51 @@ def get_captcha():
 def verify_captcha():
     if 'captcha_target' not in session:
         return jsonify({'status': 'fail', 'msg': 'Session expired'})
-        
+
     req_data = request.json
     final_x = req_data.get('x')
     final_y = req_data.get('y')
     trajectory = req_data.get('trajectory', [])
     target = session['captcha_target']
-    
-    dist = math.sqrt((final_x - target['x'])**2 + (final_y - target['y'])**2)
 
-    if len(trajectory) < 20:
-        return jsonify({'status': 'fail', 'msg': 'Unnatural movement'})
-    elif dist > 10 and dist <= 20:
-        return jsonify({'status': 'fail', 'msg': 'Not accurate enough'})
-    elif dist > 20:
-        return jsonify({'status': 'fail', 'msg': 'Incorrect position'})
+    if not trajectory or len(trajectory) < 2:
+        return jsonify({'status': 'fail', 'msg': 'Unnatural movement (code: -1)'})
 
     speeds = []
     for i in range(1, len(trajectory)):
-        p1 = trajectory[i-1]
-        p2 = trajectory[i]
-        dt = p2['t'] - p1['t']
+        dx = trajectory[i]['x'] - trajectory[i-1]['x']
+        dt = trajectory[i]['t'] - trajectory[i-1]['t']
         if dt > 0:
-            dx = p2['x'] - p1['x']
-            dy = p2['y'] - p1['y']
-            speed = math.sqrt(dx**2 + dy**2) / dt
-            speeds.append(speed)
-            
-    if not speeds:
-        return jsonify({'status': 'fail', 'msg': 'Movement abnormal'})
-        
-    avg_speed = sum(speeds) / len(speeds)
-    if avg_speed > 1:
-        return jsonify({'status': 'fail', 'msg': 'Movement too fast'})
-        
+            speeds.append(abs(dx) / dt)
+
+    mid_index = len(speeds) // 2
+    start_speed_slice = speeds[:min(5, len(speeds))]
+    end_speed_slice = speeds[-min(5, len(speeds)):]
+    start_speed = sum(start_speed_slice) / len(start_speed_slice) if start_speed_slice else 0
+    end_speed = sum(end_speed_slice) / len(end_speed_slice) if end_speed_slice else 0
+    mid_slice_start = max(0, mid_index - 5)
+    mid_slice_end = min(len(speeds), mid_index + 5)
+    mid_speed_slice = speeds[mid_slice_start:mid_slice_end]
+    mid_speed = sum(mid_speed_slice) / len(mid_speed_slice) if mid_speed_slice else 0
+    dist = math.sqrt((final_x - target['x'])**2 + (final_y - target['y'])**2)
+    total_time = trajectory[-1]['t'] - trajectory[0]['t']
+    print(dist, mid_speed, end_speed, mid_index, total_time)
+
+    if dist > 10 and dist <= 20:
+        return jsonify({'status': 'fail', 'msg': 'Not accurate enough (code: 0)'})
+    elif dist > 20:
+        return jsonify({'status': 'fail', 'msg': 'Incorrect position (code: 1)'})
+    elif not speeds:
+        return jsonify({'status': 'fail', 'msg': 'Unnatural movement (code: 2)'})
+    elif sum(speeds) / len(speeds) > 1:
+        return jsonify({'status': 'fail', 'msg': 'Unnatural movement (code: 3)'})
+    elif mid_speed < end_speed: 
+        return jsonify({'status': 'fail', 'msg': 'Unnatural movement (code: 4)'})
+    elif mid_index < 40:
+        return jsonify({'status': 'fail', 'msg': 'Unnatural movement (code: 5)'})
+    elif total_time < 600:
+        return jsonify({'status': 'fail', 'msg': 'Unnatural movement (code: 6)'})
+
     session.pop('captcha_target', None)
     return jsonify({'status': 'success', 'msg': f'Verification successful! Character: {target["char"]}'})
 
